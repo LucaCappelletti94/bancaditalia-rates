@@ -124,6 +124,7 @@ impl FromStr for Month {
 
 /// One currency's rate for one period: a day ([`Date`]), a month ([`Month`]) or a year (`i16`).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Rate<P> {
     /// Country, in the language asked for.
     pub country: String,
@@ -152,6 +153,7 @@ pub type AnnualAverageRate = Rate<i16>;
 
 /// A currency's rates against the euro and the US dollar on the latest day quoted for every currency.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct LatestRate {
     /// Country, in the language asked for.
     pub country: String,
@@ -175,6 +177,7 @@ pub struct LatestRate {
 
 /// One currency's rates over a range of days, months or years.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TimeSeries<P> {
     /// Currency name, in the language asked for.
     pub currency: String,
@@ -190,6 +193,7 @@ pub struct TimeSeries<P> {
 
 /// One rate of a [`TimeSeries`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Point<P> {
     /// The day, month or year.
     pub period: P,
@@ -201,12 +205,13 @@ pub struct Point<P> {
 
 /// A currency known to Banca d'Italia, current or expired.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct CurrencyInfo {
     /// ISO 4217 code.
     pub iso_code: String,
     /// Currency name, in the language asked for.
     pub name: String,
-    /// Whether the portal draws a chart for it.
+    /// The `graph` flag as published, its meaning undocumented by Banca d'Italia.
     pub graph: bool,
     /// Where and when the currency was or is in use.
     pub countries: Vec<CurrencyUse>,
@@ -214,6 +219,7 @@ pub struct CurrencyInfo {
 
 /// A country's use of a currency over a period.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct CurrencyUse {
     /// The country, in the language asked for.
     pub country: String,

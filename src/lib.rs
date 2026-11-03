@@ -4,6 +4,7 @@ mod model;
 pub mod parse;
 
 use jiff::civil::Date;
+use reqwest::StatusCode;
 use reqwest::header::ACCEPT;
 use url::Url;
 
@@ -17,6 +18,7 @@ pub const BASE_URL: &str = "https://tassidicambio.bancaditalia.it/terzevalute-wf
 
 /// Failure to fetch or read rates.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum Error {
     /// The request failed.
     #[error(transparent)]
@@ -25,7 +27,7 @@ pub enum Error {
     #[error("Banca d'Italia answered {status}: {body}")]
     Status {
         /// HTTP status.
-        status: u16,
+        status: StatusCode,
         /// Response body.
         body: String,
     },
@@ -39,6 +41,12 @@ pub enum Error {
         field: &'static str,
         /// Its value.
         value: String,
+    },
+    /// A field the response needs is absent.
+    #[error("{field} is missing")]
+    Missing {
+        /// Field name in the response.
+        field: &'static str,
     },
 }
 
@@ -89,7 +97,12 @@ impl Client {
         self
     }
 
-    async fn get(&self, endpoint: &str, query: &[(&str, &str)]) -> Result<Vec<u8>, Error> {
+    async fn get<T>(
+        &self,
+        endpoint: &str,
+        query: &[(&str, &str)],
+        read: fn(&[u8]) -> Result<T, Error>,
+    ) -> Result<T, Error> {
         let url = self
             .base
             .join(endpoint)
@@ -106,11 +119,11 @@ impl Client {
         let body = response.bytes().await?;
         if !status.is_success() {
             return Err(Error::Status {
-                status: status.as_u16(),
+                status,
                 body: String::from_utf8_lossy(&body).into_owned(),
             });
         }
-        Ok(body.to_vec())
+        read(&body)
     }
 
     /// Rates against the euro and the US dollar on the latest day quoted for every currency.
@@ -119,10 +132,12 @@ impl Client {
     ///
     /// Returns [`Error`] when the request fails, the service answers with an error status, or the body cannot be read.
     pub async fn latest_rates(&self) -> Result<Vec<LatestRate>, Error> {
-        parse::latest_rates(&self.get("latestRates", &[]).await?)
+        self.get("latestRates", &[], parse::latest_rates).await
     }
 
     /// Rates quoted on `date` against `quotation`, for `currencies` or for every currency when empty. A day without quotes gives an empty list.
+    ///
+    /// The service drops currency codes it does not know, so asking only for unknown codes also gives an empty list.
     ///
     /// # Errors
     ///
@@ -141,10 +156,12 @@ impl Client {
             ],
             currencies,
         );
-        parse::daily_rates(&self.get("dailyRates", &query).await?)
+        self.get("dailyRates", &query, parse::daily_rates).await
     }
 
     /// Average rates of `month` against `quotation`, for `currencies` or for every currency when empty.
+    ///
+    /// The service drops currency codes it does not know, so asking only for unknown codes gives an empty list.
     ///
     /// # Errors
     ///
@@ -164,10 +181,13 @@ impl Client {
             ],
             currencies,
         );
-        parse::monthly_average_rates(&self.get("monthlyAverageRates", &query).await?)
+        self.get("monthlyAverageRates", &query, parse::monthly_average_rates)
+            .await
     }
 
     /// Average rates of `year` against `quotation`, for `currencies` or for every currency when empty.
+    ///
+    /// The service drops currency codes it does not know, so asking only for unknown codes gives an empty list.
     ///
     /// # Errors
     ///
@@ -186,10 +206,11 @@ impl Client {
             ],
             currencies,
         );
-        parse::annual_average_rates(&self.get("annualAverageRates", &query).await?)
+        self.get("annualAverageRates", &query, parse::annual_average_rates)
+            .await
     }
 
-    /// Daily rates of `currency` against `quotation` from `start` to `end` inclusive, `None` when no day was quoted.
+    /// Daily rates of `currency` against `quotation` from `start` to `end` inclusive, `None` when no day was quoted or the service does not know `currency`.
     ///
     /// # Errors
     ///
@@ -208,10 +229,11 @@ impl Client {
             ("baseCurrencyIsoCode", currency),
             ("currencyIsoCode", quotation.iso_code()),
         ];
-        parse::daily_time_series(&self.get("dailyTimeSeries", &query).await?)
+        self.get("dailyTimeSeries", &query, parse::daily_time_series)
+            .await
     }
 
-    /// Monthly average rates of `currency` against `quotation` from `start` to `end` inclusive, `None` when no month was quoted.
+    /// Monthly average rates of `currency` against `quotation` from `start` to `end` inclusive, `None` when no month was quoted or the service does not know `currency`.
     ///
     /// # Errors
     ///
@@ -233,10 +255,11 @@ impl Client {
             ("baseCurrencyIsoCode", currency),
             ("currencyIsoCode", quotation.iso_code()),
         ];
-        parse::monthly_time_series(&self.get("monthlyTimeSeries", &query).await?)
+        self.get("monthlyTimeSeries", &query, parse::monthly_time_series)
+            .await
     }
 
-    /// Annual average rates of `currency` against `quotation` from `start` to `end` inclusive, `None` when no year was quoted.
+    /// Annual average rates of `currency` against `quotation` from `start` to `end` inclusive, `None` when no year was quoted or the service does not know `currency`.
     ///
     /// # Errors
     ///
@@ -255,7 +278,8 @@ impl Client {
             ("baseCurrencyIsoCode", currency),
             ("currencyIsoCode", quotation.iso_code()),
         ];
-        parse::annual_time_series(&self.get("annualTimeSeries", &query).await?)
+        self.get("annualTimeSeries", &query, parse::annual_time_series)
+            .await
     }
 
     /// Every currency Banca d'Italia knows, current or expired.
@@ -264,7 +288,7 @@ impl Client {
     ///
     /// Returns [`Error`] when the request fails, the service answers with an error status, or the body cannot be read.
     pub async fn currencies(&self) -> Result<Vec<CurrencyInfo>, Error> {
-        parse::currencies(&self.get("currencies", &[]).await?)
+        self.get("currencies", &[], parse::currencies).await
     }
 }
 

@@ -196,6 +196,54 @@ fn unreadable_values_are_errors() {
     ));
 }
 
+fn malformed_field<T: std::fmt::Debug>(result: Result<T, Error>) -> &'static str {
+    match result {
+        Err(Error::Malformed { field, .. }) => field,
+        other => panic!("expected a malformed field, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_series_with_an_unknown_convention_is_an_error() {
+    let body = br#"{"resultsInfo":{"totalRecords":1,"currency":"U.S. Dollar","isoCode":"USD","uicCode":"001","exchangeConventionCode":"X"},"rates":[{"referenceDate":"2026","avgRate":"1.13","exchangeConvention":"c"}]}"#;
+    assert_eq!(
+        malformed_field(parse::annual_time_series(body)),
+        "exchangeConventionCode"
+    );
+}
+
+#[test]
+fn an_average_for_a_month_outside_the_calendar_is_an_error() {
+    let body = br#"{"resultsInfo":{"totalRecords":1},"rates":[{"country":"X","currency":"X","isoCode":"XXX","uicCode":"1","avgRate":"1.5","exchangeConvention":"c","exchangeConventionCode":"C","year":2026,"month":13}]}"#;
+    assert_eq!(malformed_field(parse::monthly_average_rates(body)), "month");
+}
+
+#[test]
+fn a_series_without_its_currency_header_is_an_error() {
+    let body = br#"{"resultsInfo":{"totalRecords":1,"currency":"U.S. Dollar","isoCode":"USD","uicCode":"001"},"rates":[{"referenceDate":"2026-10-30","avgRate":"1.1172","exchangeConvention":"c"}]}"#;
+    assert!(matches!(
+        parse::daily_time_series(body),
+        Err(Error::Missing {
+            field: "exchangeConventionCode"
+        })
+    ));
+}
+
+#[test]
+fn a_series_point_with_an_unreadable_period_is_an_error() {
+    let body = br#"{"resultsInfo":{"totalRecords":1,"currency":"U.S. Dollar","isoCode":"USD","uicCode":"001","exchangeConventionCode":"C"},"rates":[{"referenceDate":"2026-13","avgRate":"1.1172","exchangeConvention":"c"}]}"#;
+    assert_eq!(
+        malformed_field(parse::monthly_time_series(body)),
+        "referenceDate"
+    );
+}
+
+#[test]
+fn a_currency_with_an_unreadable_end_date_is_an_error() {
+    let body = br#"{"resultsInfo":{"totalRecords":1},"currencies":[{"isoCode":"ADP","name":"Andorra Peseta","graph":false,"countries":[{"currencyISO":"ADP","country":"ANDORRA","countryISO":"AD","validityStartDate":"1999-02-01","validityEndDate":"31/10/2003"}]}]}"#;
+    assert_eq!(malformed_field(parse::currencies(body)), "validityEndDate");
+}
+
 #[test]
 fn months_parse_and_print_as_year_dash_month() {
     let month: Month = "2026-09".parse().unwrap();

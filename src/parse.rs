@@ -220,7 +220,7 @@ fn time_series<P>(
         return Ok(None);
     }
     let info = series.results_info;
-    let missing = |field| malformed(field, "");
+    let missing = |field| Error::Missing { field };
     let points = series
         .rates
         .into_iter()
@@ -232,12 +232,11 @@ fn time_series<P>(
             })
         })
         .collect::<Result<_, Error>>()?;
+    let code = info
+        .exchange_convention_code
+        .ok_or_else(|| missing("exchangeConventionCode"))?;
     Ok(Some(TimeSeries {
-        convention: convention(
-            &info
-                .exchange_convention_code
-                .ok_or_else(|| missing("exchangeConventionCode"))?,
-        )?,
+        convention: convention(&code)?,
         currency: info.currency.ok_or_else(|| missing("currency"))?,
         iso_code: info.iso_code.ok_or_else(|| missing("isoCode"))?,
         uic_code: info.uic_code.ok_or_else(|| missing("uicCode"))?,
