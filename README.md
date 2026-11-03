@@ -5,7 +5,7 @@
 [![docs.rs](https://docs.rs/bancaditalia-rates/badge.svg)](https://docs.rs/bancaditalia-rates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/LucaCappelletti94/bancaditalia-rates/blob/main/LICENSE)
 
-Typed async client for the [Banca d'Italia exchange rates REST API](https://tassidicambio.bancaditalia.it/terzevalute-wf-ui-web/assets/files/Operating_Instructions.pdf), the reference rates Italian tax law converts foreign-currency amounts with. It covers every endpoint: latest rates, daily rates, monthly and annual averages, the three time series, and the currency list, in English or Italian.
+Typed async client for the [Banca d'Italia exchange rates REST API](https://tassidicambio.bancaditalia.it/terzevalute-wf-ui-web/assets/files/Operating_Instructions.pdf), the daily reference rates Banca d'Italia publishes for about 150 currencies. It covers every endpoint: latest rates, daily rates, monthly and annual averages, the three time series, and the currency list, in English or Italian.
 
 `Client` fetches, and the `parse` module reads response bodies on their own:
 
@@ -19,4 +19,4 @@ assert_eq!(rates[0].rate, Some("1.1172".parse().unwrap()));
 assert_eq!(rates[0].convention, Convention::ForeignPerQuotation);
 ```
 
-Rates are quoted one of two ways, told apart by `Convention`: most currencies as units per euro or dollar, a few (pound sterling against the dollar, every currency against the lira) as euro, dollars or lire per unit. Days without quotes give an empty list, and rates published as "N.A." read as `None`.
+Rates are quoted one of two ways, told apart by `Convention`: most currencies as units per euro or dollar, a few as euro, dollars or lire per unit, such as the pound sterling and the Australian and New Zealand dollars against the dollar, and every currency against the lira. Days without quotes give an empty list, and rates published as "N.A." read as `None`. The service drops currency codes it does not know, so a mistyped code also gives an empty list.

@@ -2,6 +2,7 @@
 
 use bancaditalia_rates::{Client, Error, Language, Month, Quotation};
 use jiff::civil::date;
+use reqwest::StatusCode;
 use url::Url;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Match, Mock, MockServer, Request, ResponseTemplate};
@@ -286,7 +287,8 @@ async fn error_statuses_carry_the_service_message() {
         .daily_time_series("USD", Quotation::Euro, date(2026, 11, 2), date(2026, 11, 1))
         .await
         .unwrap_err();
-    assert!(
-        matches!(error, Error::Status { status: 400, ref body } if body == "WARNING! Invalid date range")
-    );
+    assert!(matches!(
+        error,
+        Error::Status { status: StatusCode::BAD_REQUEST, ref body } if body == "WARNING! Invalid date range"
+    ));
 }

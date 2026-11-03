@@ -221,10 +221,12 @@ fn an_average_for_a_month_outside_the_calendar_is_an_error() {
 #[test]
 fn a_series_without_its_currency_header_is_an_error() {
     let body = br#"{"resultsInfo":{"totalRecords":1,"currency":"U.S. Dollar","isoCode":"USD","uicCode":"001"},"rates":[{"referenceDate":"2026-10-30","avgRate":"1.1172","exchangeConvention":"c"}]}"#;
-    assert_eq!(
-        malformed_field(parse::daily_time_series(body)),
-        "exchangeConventionCode"
-    );
+    assert!(matches!(
+        parse::daily_time_series(body),
+        Err(Error::Missing {
+            field: "exchangeConventionCode"
+        })
+    ));
 }
 
 #[test]
