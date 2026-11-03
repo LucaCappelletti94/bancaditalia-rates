@@ -1,0 +1,33 @@
+[package]
+name = "bancaditalia-rates"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Typed client for the Banca d'Italia exchange rates REST API"
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/LucaCappelletti94/bancaditalia-rates"
+documentation = "https://docs.rs/bancaditalia-rates"
+authors = ["Luca Cappelletti <cappelletti.luca94@gmail.com>"]
+keywords = ["exchange-rates", "banca-d-italia", "currency", "euro", "forex"]
+categories = ["finance", "api-bindings"]
+
+[dependencies]
+jiff = "0.2.39"
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "query"] }
+rust_decimal = "1.43.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+url = "2.5.8"
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+unused_qualifications = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+multiple_crate_versions = "allow"
